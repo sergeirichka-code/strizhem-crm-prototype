@@ -2007,3 +2007,17 @@ html,body,button,input{font-family:Inter, Arial, sans-serif!important}
   background:transparent!important;
   object-fit:contain!important;
 }
+
+/* V52 — smaller domain trigger in right free space with drop-up list */
+.email-row-letters{grid-template-columns:repeat(8,1fr) 2.1fr!important;align-items:start}
+.email-domain-inline{position:relative;align-self:stretch;min-width:0}
+.email-domain-inline[open]{z-index:20}
+.email-domain-trigger{list-style:none;height:46px;border:1px solid #d9d9d9;border-radius:6px;background:#fff;color:#111;font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:0 12px;user-select:none;white-space:nowrap;gap:10px}
+.email-domain-trigger::-webkit-details-marker{display:none}
+.email-domain-trigger::after{content:'▾';font-size:16px;color:#777;line-height:1;flex:0 0 auto}
+.email-domain-inline[open] .email-domain-trigger{border-top-left-radius:0;border-top-right-radius:0;border-color:#cfcfcf}
+.email-domain-menu{position:absolute;right:0;left:auto;bottom:46px;top:auto;min-width:188px;max-height:228px;background:#fff;border:1px solid #cfcfcf;border-bottom:none;border-top-left-radius:8px;border-top-right-radius:8px;box-shadow:0 -10px 26px rgba(0,0,0,.08);overflow:auto;scrollbar-width:thin}
+.email-domain-option{width:100%;height:38px;border:0;border-top:1px solid #efefef;background:#fff;color:#111;font-size:13px;font-weight:600;display:flex;align-items:center;padding:0 14px;cursor:pointer;text-align:left;white-space:nowrap}
+.email-domain-option:first-child{border-top:0}
+.email-domain-option:active{background:#f5f5f5}
+.email-modal{max-height:calc(100% - 24px)!important}
