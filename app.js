@@ -39,7 +39,7 @@ const masters=[
 {id:104,display:4,enabled:false},
 {id:105,display:5,enabled:false}
 ];
-const state={screen:'home',flow:'services',base:null,selectedExtras:{},phone:'',consentAccepted:true,master:null,masterBackendId:null,rating:null,selectedSource:null,modal:null,entry:'haircut',promoCode:'',promoDraft:'',promoError:'',promoValidating:false,useBonuses:false,bonusVerified:false,birthDraft:'',birthError:'',birthValidating:false,servicePin:'',servicePinError:'',servicePinValidating:false,serviceAuthed:false,serviceBusy:null,serviceMessages:[],promotionSelection:null,cosmeticsCategory:'shampoo',cosmeticsManufacturer:'ESTEL',cosmeticsCart:{},receiptTo:'none',receiptPhone:'',receiptEmail:'',emailDraft:'',emailError:'',emailSaving:false,emailShift:false,emailSelectedDomain:'@mail.ru',paymentMethod:'',scale:1};
+const state={screen:'home',flow:'services',base:null,selectedExtras:{},phone:'',consentAccepted:true,master:null,masterBackendId:null,rating:null,selectedSource:null,modal:null,entry:'haircut',promoCode:'',promoDraft:'',promoError:'',promoValidating:false,useBonuses:false,bonusVerified:false,birthDraft:'',birthError:'',birthValidating:false,servicePin:'',servicePinError:'',servicePinValidating:false,serviceAuthed:false,serviceBusy:null,serviceMessages:[],promotionSelection:null,promotionNavigating:false,cosmeticsCategory:'shampoo',cosmeticsManufacturer:'ESTEL',cosmeticsCart:{},receiptTo:'none',receiptPhone:'',receiptEmail:'',emailDraft:'',emailError:'',emailSaving:false,emailShift:false,emailSelectedDomain:'@mail.ru',paymentMethod:'',cardPaymentStatus:'idle',cardPaymentLocked:false,cardPaymentAmount:0,cardPaymentMessage:'',sbpPaymentStatus:'idle',sbpPaymentLocked:false,sbpPaymentAmount:0,sbpPaymentMessage:'',sbpTransactionId:'',sbpQrPayload:'',sbpQrImage:'',cashPaymentStatus:'idle',cashPaymentLocked:false,cashPaymentAmount:0,cashReceived:0,cashPaymentMessage:'',scale:1};
 const __p=new URLSearchParams(location.search);if(__p.get('demo')==='extras'){state.screen='extras';state.base=haircuts[1];state.entry='haircut';state.selectedExtras={'wash-style':1,'beard':1,'fade':1};}if(__p.get('demo')==='phone'){state.screen='phone';state.base=haircuts[1];state.entry='haircut';state.selectedExtras={'wash-style':1,'beard':1,'fade':1};}if(__p.get('demo')==='source'){state.screen='source';state.base=haircuts[1];state.entry='haircut';state.selectedExtras={'wash-style':1};}
 if(__p.get('demo')==='promos'){state.screen='promos';}
 if(__p.get('demo')==='cosmetics'){state.flow='cosmetics';state.screen='cosmetics';}
@@ -54,6 +54,191 @@ const serviceCount=()=> (state.base?1:0)+Object.values(state.selectedExtras).red
 const receiptDiscount=()=> total()>0?100:0;
 const receiptBonusSpent=()=> state.useBonuses?Math.min(235,150,total()):0;
 const payableTotal=()=>Math.max(0,total()-receiptDiscount()-receiptBonusSpent());
+const openCardPaymentModal=()=>{
+  if(state.cardPaymentLocked||state.modal==='card-payment')return;
+  state.paymentMethod='card';
+  state.cardPaymentAmount=payableTotal();
+  state.cardPaymentStatus='waiting_for_terminal';
+  state.cardPaymentMessage='';
+  state.cardPaymentLocked=true;
+  state.modal='card-payment';
+  render();
+  startCardPaymentTransaction();
+};
+const cancelCardPayment=()=>{
+  if(state.modal!=='card-payment')return;
+  try{if(typeof window.STRIZHEM_CANCEL_CARD_PAYMENT==='function')window.STRIZHEM_CANCEL_CARD_PAYMENT();}catch(_){}
+  state.cardPaymentStatus='cancelled';
+  state.cardPaymentLocked=false;
+  state.cardPaymentMessage='';
+  state.modal=null;
+  render();
+};
+const handleCardPaymentStatus=(status,payload={})=>{
+  const normalized=String(status||'').toLowerCase();
+  if(normalized==='processing'||normalized==='waiting_for_terminal'){state.cardPaymentStatus=normalized;state.cardPaymentMessage=payload.message||'';render();return;}
+  if(normalized==='success'){state.cardPaymentStatus='success';state.cardPaymentLocked=false;state.modal=null;state.screen='success';render();return;}
+  if(normalized==='cancelled'||normalized==='canceled'){state.cardPaymentStatus='cancelled';state.cardPaymentLocked=false;state.modal=null;state.cardPaymentMessage='';render();return;}
+  if(normalized==='failed'||normalized==='declined'||normalized==='error'){state.cardPaymentStatus='failed';state.cardPaymentLocked=false;state.cardPaymentMessage=payload.message||'Оплата не выполнена. Повторите попытку на банковском терминале.';render();return;}
+};
+const startCardPaymentTransaction=()=>{
+  const amount=state.cardPaymentAmount;
+  try{
+    if(typeof window.STRIZHEM_START_CARD_PAYMENT==='function'){
+      const result=window.STRIZHEM_START_CARD_PAYMENT({amount,receiptMethod:state.receiptTo,email:state.receiptEmail||'',onStatus:handleCardPaymentStatus});
+      if(result&&typeof result.then==='function')result.then(r=>{if(r&&r.status)handleCardPaymentStatus(r.status,r);}).catch(()=>handleCardPaymentStatus('failed',{message:'Нет связи с банковским терминалом. Повторите попытку.'}));
+    }
+  }catch(_){handleCardPaymentStatus('failed',{message:'Нет связи с банковским терминалом. Повторите попытку.'});}
+};
+window.STRIZHEM_CARD_PAYMENT_STATUS=(status,payload)=>handleCardPaymentStatus(status,payload||{});
+const sbpDemoId=()=>`sbp-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+const sbpQrSvg=(payload='')=>{
+  const size=29, cell=5, pad=4;
+  let seed=2166136261;
+  const str=String(payload||'STRIZHEM-SBP');
+  for(let i=0;i<str.length;i++){seed^=str.charCodeAt(i);seed=Math.imul(seed,16777619)>>>0;}
+  const rnd=()=>{seed^=seed<<13;seed^=seed>>>17;seed^=seed<<5;return (seed>>>0)/4294967296;};
+  const reserved=Array.from({length:size},()=>Array(size).fill(false));
+  const cells=[];
+  const finder=(x,y)=>{for(let dy=0;dy<7;dy++)for(let dx=0;dx<7;dx++){reserved[y+dy][x+dx]=true;const on=dx===0||dy===0||dx===6||dy===6||(dx>=2&&dx<=4&&dy>=2&&dy<=4);if(on)cells.push([x+dx,y+dy]);}};
+  finder(0,0);finder(size-7,0);finder(0,size-7);
+  for(let y=0;y<size;y++)for(let x=0;x<size;x++){if(reserved[y][x])continue;if(rnd()>.52)cells.push([x,y]);}
+  const rects=cells.map(([x,y])=>`<rect x="${pad+x*cell}" y="${pad+y*cell}" width="${cell}" height="${cell}"/>`).join('');
+  const side=pad*2+size*cell;
+  return `<svg viewBox="0 0 ${side} ${side}" aria-label="QR-код СБП"><rect width="${side}" height="${side}" fill="#fff"/><g fill="#000">${rects}</g></svg>`;
+};
+const openSbpPaymentModal=()=>{
+  if(state.sbpPaymentLocked||state.modal==='sbp-payment')return;
+  state.paymentMethod='sbp';
+  state.sbpPaymentAmount=payableTotal();
+  state.sbpPaymentStatus='creating';
+  state.sbpPaymentMessage='';
+  state.sbpPaymentLocked=true;
+  state.sbpTransactionId='';
+  state.sbpQrPayload='';
+  state.sbpQrImage='';
+  state.modal='sbp-payment';
+  render();
+  startSbpPaymentTransaction();
+};
+const handleSbpPaymentStatus=(status,payload={})=>{
+  const normalized=String(status||'').toLowerCase();
+  if(payload.transactionId||payload.paymentId)state.sbpTransactionId=payload.transactionId||payload.paymentId;
+  if(payload.qrPayload||payload.qr)state.sbpQrPayload=payload.qrPayload||payload.qr;
+  if(payload.qrImage||payload.qrImageUrl)state.sbpQrImage=payload.qrImage||payload.qrImageUrl;
+  if(normalized==='creating'||normalized==='waiting_for_payment'||normalized==='processing'){
+    state.sbpPaymentStatus=normalized;
+    state.sbpPaymentMessage=payload.message||'';
+    render();
+    return;
+  }
+  if(normalized==='success'){
+    state.sbpPaymentStatus='success';state.sbpPaymentLocked=false;state.modal=null;state.screen='success';render();return;
+  }
+  if(normalized==='cancelled'||normalized==='canceled'){
+    state.sbpPaymentStatus='cancelled';state.sbpPaymentLocked=false;state.modal=null;state.sbpPaymentMessage='';render();return;
+  }
+  if(normalized==='expired'){
+    state.sbpPaymentStatus='expired';state.sbpPaymentLocked=false;state.sbpPaymentMessage=payload.message||'Срок действия QR-кода истёк. Вернитесь назад и повторите оплату.';render();return;
+  }
+  if(normalized==='failed'||normalized==='error'){
+    state.sbpPaymentStatus='failed';state.sbpPaymentLocked=false;state.sbpPaymentMessage=payload.message||'Не удалось создать или подтвердить платёж СБП. Повторите попытку.';render();return;
+  }
+};
+const startSbpPaymentTransaction=()=>{
+  const amount=state.sbpPaymentAmount;
+  try{
+    if(typeof window.STRIZHEM_START_SBP_PAYMENT==='function'){
+      const result=window.STRIZHEM_START_SBP_PAYMENT({amount,receiptMethod:state.receiptTo,email:state.receiptEmail||'',onStatus:handleSbpPaymentStatus});
+      if(result&&typeof result.then==='function')result.then(r=>{if(r){handleSbpPaymentStatus(r.status||'waiting_for_payment',r);}}).catch(()=>handleSbpPaymentStatus('failed',{message:'Нет связи с сервисом СБП. Повторите попытку.'}));
+      else if(result&&typeof result==='object')handleSbpPaymentStatus(result.status||'waiting_for_payment',result);
+      return;
+    }
+    const id=sbpDemoId();
+    state.sbpTransactionId=id;
+    state.sbpQrPayload=`STRIZHEM|SBP|${id}|${amount}`;
+    state.sbpPaymentStatus='waiting_for_payment';
+    render();
+  }catch(_){handleSbpPaymentStatus('failed',{message:'Нет связи с сервисом СБП. Повторите попытку.'});}
+};
+const cancelSbpPayment=()=>{
+  if(state.modal!=='sbp-payment')return;
+  const tx=state.sbpTransactionId;
+  try{if(typeof window.STRIZHEM_CANCEL_SBP_PAYMENT==='function')window.STRIZHEM_CANCEL_SBP_PAYMENT({transactionId:tx});}catch(_){}
+  state.sbpPaymentStatus='cancelled';
+  state.sbpPaymentLocked=false;
+  state.sbpTransactionId='';state.sbpQrPayload='';state.sbpQrImage='';state.sbpPaymentMessage='';
+  state.modal=null;render();
+};
+window.STRIZHEM_SBP_PAYMENT_STATUS=(status,payload)=>handleSbpPaymentStatus(status,payload||{});
+const cashChange=()=>Math.max(Number(state.cashReceived||0)-Number(state.cashPaymentAmount||0),0);
+const openCashPaymentModal=()=>{
+  if(state.cashPaymentLocked||state.modal==='cash-payment')return;
+  state.paymentMethod='cash';
+  state.cashPaymentAmount=payableTotal();
+  state.cashReceived=0;
+  state.cashPaymentStatus='accepting_cash';
+  state.cashPaymentMessage='';
+  state.cashPaymentLocked=true;
+  state.modal='cash-payment';
+  render();
+  startCashPaymentFlow();
+};
+const handleCashPaymentStatus=(status,payload={})=>{
+  const normalized=String(status||'').toLowerCase();
+  if(payload.amountReceived!=null)state.cashReceived=Math.max(0,Number(payload.amountReceived)||0);
+  if(payload.received!=null)state.cashReceived=Math.max(0,Number(payload.received)||0);
+  if(normalized==='idle'||normalized==='accepting_cash'||normalized==='enough_cash'){
+    state.cashPaymentStatus=state.cashReceived>=state.cashPaymentAmount?'enough_cash':(normalized==='idle'?'idle':'accepting_cash');
+    state.cashPaymentMessage=payload.message||'';
+    render();return;
+  }
+  if(normalized==='processing'){
+    state.cashPaymentStatus='processing';state.cashPaymentMessage=payload.message||'';render();return;
+  }
+  if(normalized==='success'){
+    state.cashPaymentStatus='success';state.cashPaymentLocked=false;state.modal=null;state.screen='success';render();return;
+  }
+  if(normalized==='cancelled'||normalized==='canceled'){
+    state.cashPaymentStatus='cancelled';state.cashPaymentLocked=false;state.modal=null;state.cashPaymentMessage='';render();return;
+  }
+  if(normalized==='failed'||normalized==='error'){
+    state.cashPaymentStatus='failed';state.cashPaymentLocked=false;state.cashPaymentMessage=payload.message||'Не удалось завершить оплату наличными. Обратитесь к администратору.';render();return;
+  }
+};
+const startCashPaymentFlow=()=>{
+  const amount=state.cashPaymentAmount;
+  try{
+    if(typeof window.STRIZHEM_START_CASH_PAYMENT==='function'){
+      const result=window.STRIZHEM_START_CASH_PAYMENT({amount,receiptMethod:state.receiptTo,email:state.receiptEmail||'',onStatus:handleCashPaymentStatus});
+      if(result&&typeof result.then==='function')result.then(r=>{if(r)handleCashPaymentStatus(r.status||'accepting_cash',r);}).catch(()=>handleCashPaymentStatus('failed',{message:'Нет связи с купюроприёмником. Попробуйте ещё раз.'}));
+      else if(result&&typeof result==='object')handleCashPaymentStatus(result.status||'accepting_cash',result);
+      return;
+    }
+    // Prototype-only fallback when hardware adapter is absent.
+    const demoReceived=Math.ceil(Math.max(amount,1)/500)*500;
+    setTimeout(()=>{if(state.modal==='cash-payment'&&state.cashPaymentStatus==='accepting_cash')handleCashPaymentStatus('enough_cash',{amountReceived:demoReceived});},550);
+  }catch(_){handleCashPaymentStatus('failed',{message:'Нет связи с купюроприёмником. Попробуйте ещё раз.'});}
+};
+const cancelCashPayment=()=>{
+  if(state.modal!=='cash-payment')return;
+  try{if(typeof window.STRIZHEM_CANCEL_CASH_PAYMENT==='function')window.STRIZHEM_CANCEL_CASH_PAYMENT({amount:state.cashPaymentAmount,amountReceived:state.cashReceived});}catch(_){}
+  state.cashPaymentStatus='cancelled';state.cashPaymentLocked=false;state.cashReceived=0;state.cashPaymentMessage='';state.modal=null;render();
+};
+const confirmCashPayment=()=>{
+  if(state.modal!=='cash-payment'||state.cashPaymentStatus==='processing'||state.cashReceived<state.cashPaymentAmount)return;
+  state.cashPaymentStatus='processing';state.cashPaymentLocked=true;state.cashPaymentMessage='';render();
+  try{
+    if(typeof window.STRIZHEM_CONFIRM_CASH_PAYMENT==='function'){
+      const result=window.STRIZHEM_CONFIRM_CASH_PAYMENT({amount:state.cashPaymentAmount,amountReceived:state.cashReceived,change:cashChange(),receiptMethod:state.receiptTo,email:state.receiptEmail||'',onStatus:handleCashPaymentStatus});
+      if(result&&typeof result.then==='function')result.then(r=>handleCashPaymentStatus(r?.status||'success',r||{})).catch(()=>handleCashPaymentStatus('failed',{message:'Не удалось зафиксировать оплату. Повторите попытку.'}));
+      else if(result&&typeof result==='object')handleCashPaymentStatus(result.status||'success',result);
+      return;
+    }
+    setTimeout(()=>handleCashPaymentStatus('success',{}),450);
+  }catch(_){handleCashPaymentStatus('failed',{message:'Не удалось зафиксировать оплату. Повторите попытку.'});}
+};
+window.STRIZHEM_CASH_PAYMENT_STATUS=(status,payload)=>handleCashPaymentStatus(status,payload||{});
 const bonusAccrual=()=>Math.floor(payableTotal()*0.05);
 const receiptPhoneDisplay=()=> state.phone.length===10 ? `+7 (${state.phone.slice(0,3)}) ${state.phone.slice(3,6)}-${state.phone.slice(6,8)}-${state.phone.slice(8,10)}` : '+7 (999) 123-45-67';
 const serviceNameForReceipt=(base)=> base && base.id==='halfbox' ? 'Мужская стрижка' : (base? base.name : '');
@@ -62,15 +247,7 @@ const closePromoModal=()=>{state.modal=null;state.promoDraft='';state.promoError
 const validatePromoCode=(code)=> new Promise(resolve=>setTimeout(()=>{const normalized=(code||'').trim();const validCodes=new Set(['1234','1111','5555','123456']);if(validCodes.has(normalized))resolve({ok:true,code:normalized});else resolve({ok:false,message:'Промокод не найден или недействителен'});},450));
 const openEmailModal=()=>{state.emailDraft=state.receiptEmail||'';const existingDomain=(state.emailDraft.includes('@')?'@'+state.emailDraft.split('@').slice(1).join('@'):'')||'';state.emailSelectedDomain=existingDomain||'@mail.ru';state.emailError='';state.emailSaving=false;state.emailShift=false;state.modal='email';render();};
 const closeEmailModal=()=>{state.modal=null;state.emailDraft='';state.emailError='';state.emailSaving=false;state.emailShift=false;state.emailSelectedDomain='@mail.ru';render();};
-const applyEmailDomain=(domain)=>{
-  if(!domain)return;
-  const current=state.emailDraft||'';
-  const at=current.indexOf('@');
-  state.emailDraft=at===-1 ? current+domain : current.slice(0,at)+domain;
-  state.emailSelectedDomain=domain;
-  state.emailError='';
-  render();
-};
+const applyEmailDomain=(domain)=>{if(!domain)return;const current=state.emailDraft||'';const at=current.indexOf('@');state.emailDraft=at===-1?current+domain:current.slice(0,at)+domain;state.emailSelectedDomain=domain;state.emailError='';render();};
 const emailLooksValid=(value)=>{const v=(value||'').trim();if(!v)return {ok:false,message:'Введите e-mail.'};if(/\s/.test(v)||!v.includes('@'))return {ok:false,message:'Проверьте правильность e-mail.'};const parts=v.split('@');if(parts.length!==2||!parts[0]||!parts[1]||!parts[1].includes('.')||parts[1].startsWith('.')||parts[1].endsWith('.'))return {ok:false,message:'Проверьте правильность e-mail.'};return {ok:true,value:v};};
 const saveReceiptEmail=async(value)=>{try{if(typeof window.STRIZHEM_SAVE_RECEIPT_EMAIL==='function'){const r=await window.STRIZHEM_SAVE_RECEIPT_EMAIL(value);return r&&typeof r==='object'?r:{ok:!!r};}return await new Promise(resolve=>setTimeout(()=>resolve({ok:true}),280));}catch(e){return {ok:false,message:'Не удалось сохранить e-mail. Попробуйте ещё раз.'};}};
 const openBirthModal=()=>{state.birthDraft='';state.birthError='';state.birthValidating=false;state.modal='birthdate';render();};
@@ -116,8 +293,8 @@ function cosmeticsScreen(){const visible=cosmeticsVisible();return `<div class="
     <div class="cosmetics-catalog-wrap"><div class="cosmetics-catalog" id="cosmeticsCatalog">${visible.length?visible.map((p,i)=>{const q=state.cosmeticsCart[p.id]||0;return `<article class="cosmetics-product-card">${p.badge?`<span class="cosmetics-hit">${p.badge}</span>`:''}<div class="cosmetics-product-image">${cosmeticsPlaceholder(i)}</div><h3>${p.name.replace('\\n','<br>')}</h3><strong>${fmt(p.price)} ₽</strong><div class="cosmetics-qty"><button data-cosmetics-minus="${p.id}" ${q===0?'disabled':''}>−</button><span>${q}</span><button class="plus" data-cosmetics-plus="${p.id}">＋</button></div></article>`}).join(''):`<div class="cosmetics-empty">В этой категории товары отсутствуют</div>`}</div><div class="cosmetics-scroll-controls"><button data-action="cosmetics-scroll-up" aria-label="Прокрутить вверх">⌃</button><div class="cosmetics-scroll-track"><i></i></div><button data-action="cosmetics-scroll-down" aria-label="Прокрутить вниз">⌄</button></div></div>
   </section>
 </div>`}
-function steps(){if(state.flow==='cosmetics')return cosmeticsSteps();const map={haircuts:1,promos:2,extras:2,phone:3,source:4,rating:5,payment:6,success:6};const current=map[state.screen]||1;return `<div class="steps">${['Стрижка','Доп. услуги','Данные','Источник','Оценка','Оплата'].map((x,i)=>`<span class="${i+1===current?'active':''}"><b>${i+1}</b><small>${x}</small></span>`).join('')}</div>`}
-function goHome(){Object.assign(state,{screen:'home',base:null,selectedExtras:{},phone:'',master:null,masterBackendId:null,rating:null,selectedSource:null,entry:'haircut',promotionSelection:null});render();}
+function steps(){if(state.flow==='cosmetics')return cosmeticsSteps();const map={haircuts:1,promos:2,extras:2,phone:3,source:4,rating:5,payment:6,success:6};const current=map[state.screen]||1;const labels=['Стрижка',state.screen==='promos'?'Акции':'Доп. услуги','Данные','Источник','Оценка','Оплата'];return `<div class="steps">${labels.map((x,i)=>`<span class="${i+1===current?'active':''}"><b>${i+1}</b><small>${x}</small></span>`).join('')}</div>`}
+function goHome(){Object.assign(state,{screen:'home',base:null,selectedExtras:{},phone:'',master:null,masterBackendId:null,rating:null,selectedSource:null,entry:'haircut',promotionSelection:null,promotionNavigating:false});render();}
 function goBackFromExtras(){state.screen=state.entry==='promo'?'promos':state.entry==='extras'?'home':'haircuts';render();}
 function changeExtra(id,delta){const n=Math.max(0,Math.min(99,(state.selectedExtras[id]||0)+delta)); if(n===0)delete state.selectedExtras[id];else state.selectedExtras[id]=n; render();}
 function phoneText(){const digits=(state.phone+'__________').slice(0,10).split('');return `+7 (${digits.slice(0,3).join('')}) ${digits.slice(3,6).join('')}-${digits.slice(6,8).join('')}-${digits.slice(8,10).join('')}`;}
@@ -131,7 +308,7 @@ function haircutScreen(){return title('Выберите из списка или
 function promos(){const selected=state.promotionSelection;return `<div class="promotions-screen">
   <h1>ДОСТУПНЫЕ АКЦИИ</h1>
   <div class="promotions-grid">
-    <button class="promotion-card active-promo ${selected==='senior'?'selected':''}" data-promotion="senior" aria-pressed="${selected==='senior'}">
+    <button class="promotion-card active-promo ${selected==='senior'?'selected':''} ${state.promotionNavigating&&selected==='senior'?'navigating':''}" data-promotion="senior" aria-pressed="${selected==='senior'}">
       <div class="promotion-art"><img src="./brand/action-senior-clean.png" alt="Пенсионер"></div>
       <div class="promotion-content">
         <span class="promotion-badge active"><i>✓</i> АКЦИЯ АКТИВНА</span>
@@ -140,7 +317,7 @@ function promos(){const selected=state.promotionSelection;return `<div class="pr
         <div class="promotion-price">400 ₽</div>
       </div>
     </button>
-    <button class="promotion-card active-promo ${selected==='father-son'?'selected':''}" data-promotion="father-son" aria-pressed="${selected==='father-son'}">
+    <button class="promotion-card active-promo ${selected==='father-son'?'selected':''} ${state.promotionNavigating&&selected==='father-son'?'navigating':''}" data-promotion="father-son" aria-pressed="${selected==='father-son'}">
       <div class="promotion-art"><img src="./brand/action-family-clean.png" alt="Отец и сын"></div>
       <div class="promotion-content">
         <span class="promotion-badge active"><i>✓</i> АКЦИЯ АКТИВНА</span>
@@ -248,24 +425,30 @@ return `<div class="payment-screen">
       <div class="payment-method-list">
         <button class="payment-method-card ${state.paymentMethod==='card'?'selected':''}" data-pay="card"><img src="./payment-icons/card.png" alt=""><span class="payment-method-copy"><b>Банковская карта</b><small>VISA, MasterCard, МИР</small></span><em>›</em></button>
         <button class="payment-method-card ${state.paymentMethod==='sbp'?'selected':''}" data-pay="sbp"><img src="./payment-icons/sbp-v2.png" alt=""><span class="payment-method-copy"><b>СБП</b><small>Оплата по QR-коду</small></span><em>›</em></button>
-        <button class="payment-method-card ${state.paymentMethod==='cash'?'selected':''}" data-pay="cash"><img src="./payment-icons/cash-v2.png" alt=""><span class="payment-method-copy"><b>Наличные</b><small>Оплата наличными</small></span><em>›</em></button>
+        <button class="payment-method-card ${state.paymentMethod==='cash'?'selected':''}" data-pay="cash"><span class="cash-icon-v56" aria-hidden="true"><svg viewBox="0 0 44 32"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 9.5 34 4l2 8"/><rect x="6" y="10" width="32" height="18" rx="1.8"/><path d="M10 14h3m18 0h3M10 24h3m18 0h3"/><circle cx="22" cy="19" r="4.1"/><path d="M19.8 19h4.4"/></g></svg></span><span class="payment-method-copy"><b>Наличные</b><small>Оплата наличными</small></span><em>›</em></button>
       </div>
     </div>
-    <div class="receipt-delivery">
-      <h3>ПОЛУЧЕНИЕ ЭЛЕКТРОННОГО ЧЕКА</h3>
-      <p>Выберите способ получения чека.</p>
-      <button type="button" class="receipt-email-choice ${state.receiptTo==='email'?'selected':''}" data-action="open-email-modal">
-        <div class="receipt-choice-main">
-          <span class="receipt-choice-icon mail"></span>
-          <span class="receipt-choice-copy"><b>Отправить на e-mail</b><small>${state.receiptEmail||'Введите e-mail'}</small></span>
-        </div>
-        <span class="receipt-radio ${state.receiptTo==='email'?'selected':''}" aria-hidden="true"></span>
-      </button>
-      <button type="button" class="receipt-no-check ${state.receiptTo==='none'?'selected':''}" data-action="receipt-none">
-        <span class="receipt-no-check-icon">×</span>
-        <span><b>ЧЕК НЕ НУЖЕН</b><small>Продолжить без электронного чека</small></span>
-        <span class="receipt-radio ${state.receiptTo==='none'?'selected':''}" aria-hidden="true"></span>
-      </button>
+    <div class="receipt-delivery receipt-delivery-v54">
+      <h3>ПОЛУЧЕНИЕ ЧЕКА</h3>
+      <p>Выберите, как вы хотите получить чек после оплаты.</p>
+      <div class="receipt-options-list">
+        <button type="button" class="receipt-option ${state.receiptTo==='email'?'selected':''}" data-action="open-email-modal">
+          <span class="receipt-option-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><rect x="4.5" y="7.5" width="23" height="17" rx="1.8" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M6.5 9.5 16 17l9.5-7.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span class="receipt-option-label">Отправить на e-mail</span>
+          <span class="receipt-radio ${state.receiptTo==='email'?'selected':''}" aria-hidden="true"></span>
+        </button>
+        <button type="button" class="receipt-option ${state.receiptTo==='print'?'selected':''}" data-action="receipt-print">
+          <span class="receipt-option-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M9 12V5.5h14V12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><rect x="6" y="11.5" width="20" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="2.4"/><rect x="9" y="18" width="14" height="8.5" rx=".8" fill="none" stroke="currentColor" stroke-width="2.4"/><circle cx="22.2" cy="15.4" r="1.2" fill="currentColor"/></svg></span>
+          <span class="receipt-option-label">Печатный чек</span>
+          <span class="receipt-radio ${state.receiptTo==='print'?'selected':''}" aria-hidden="true"></span>
+        </button>
+        <button type="button" class="receipt-option ${state.receiptTo==='none'?'selected':''}" data-action="receipt-none">
+          <span class="receipt-option-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="11" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="m8.3 23.7 15.4-15.4" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></span>
+          <span class="receipt-option-label">Чек не нужен</span>
+          <span class="receipt-radio ${state.receiptTo==='none'?'selected':''}" aria-hidden="true"></span>
+        </button>
+      </div>
+      <div class="receipt-profile-note"><span>i</span><small>Мы сохраним e-mail в вашем профиле для отправки чеков в будущем.</small></div>
     </div>
   </div>
 </div>`}
@@ -312,7 +495,7 @@ function footer(){
 if(['home','success'].includes(state.screen))return '';
 let next='';
 if(state.screen==='cosmetics')next=`<button ${cosmeticsCount()===0?'disabled':''} class="next cosmetics-next" data-action="next-cosmetics">ДАЛЕЕ <span>→</span></button>`;
-else if(state.screen==='promos')next=`<button ${!state.promotionSelection?'disabled':''} class="next promotions-next" data-action="next-promotion">ДАЛЕЕ <span>→</span></button>`;
+else if(state.screen==='promos')next='';
 else if(state.screen==='extras')next=`<button ${state.entry==='extras'&&serviceCount()===0?'disabled':''} class="next" data-action="next-extras">ПРОДОЛЖИТЬ →</button>`;
 else if(state.screen==='phone')next=`<button class="next" data-action="next-phone">ПРОДОЛЖИТЬ →</button>`;
 else if(state.screen==='rating')next=`<div class="next-wrap"><button ${!state.master||!state.rating?'disabled':''} class="next" data-action="next-rating">ПРОДОЛЖИТЬ →</button>${state.master&&state.rating?'':`<span class="next-note">Выберите номер мастера и поставьте оценку</span>`}</div>`;
@@ -321,6 +504,61 @@ else next='<span class="footer-space"></span>';
 return `<footer class="footer"><button class="back" data-action="back"><span class="back-arrow">←</span><span class="back-label">НАЗАД</span></button>${steps()}${next}</footer>`}
 function modal(){
 if(!state.modal)return '';
+if(state.modal==='cash-payment'){
+  const due=fmt(state.cashPaymentAmount||payableTotal());
+  const received=fmt(state.cashReceived||0);
+  const change=fmt(cashChange());
+  const enough=state.cashReceived>=state.cashPaymentAmount&&state.cashPaymentAmount>0;
+  const processing=state.cashPaymentStatus==='processing';
+  const failed=state.cashPaymentStatus==='failed';
+  return `<div class="overlay cash-payment-overlay"><div class="modal cash-payment-modal" role="dialog" aria-modal="true" aria-labelledby="cashPaymentTitle">
+    <div class="cash-payment-brand"><img src="./brand/logo.svg" alt="СТРИЖЁМ — мужские стрижки"></div>
+    <h2 id="cashPaymentTitle">ОПЛАТА НАЛИЧНЫМИ</h2>
+    <div class="cash-payment-label">СУММА К ОПЛАТЕ</div>
+    <div class="cash-payment-due">${due} ₽</div>
+    <div class="cash-payment-divider"></div>
+    <div class="cash-payment-label received-label">ВНЕСЕНО</div>
+    <div class="cash-received-box"><strong>${received} ₽</strong><span class="cash-received-clear" aria-hidden="true">×</span></div>
+    <div class="cash-payment-divider second"></div>
+    <div class="cash-payment-label change-label">СУММА СДАЧИ</div>
+    <div class="cash-payment-change">${change} ₽</div>
+    <div class="cash-payment-status ${failed?'error':processing?'processing':''}">${failed?state.cashPaymentMessage:processing?'ФИКСИРУЕМ ОПЛАТУ…':''}</div>
+    <div class="cash-payment-actions"><button type="button" class="cash-payment-cancel" data-action="cancel-cash-payment">ОТМЕНА</button><button type="button" class="cash-payment-done" data-action="confirm-cash-payment" ${enough&&!processing?'':'disabled'}>ГОТОВО</button></div>
+  </div></div>`;
+}
+if(state.modal==='sbp-payment'){
+  const amount=fmt(state.sbpPaymentAmount||payableTotal());
+  const status=state.sbpPaymentStatus;
+  const ready=(status==='waiting_for_payment'||status==='processing')&&(state.sbpQrImage||state.sbpQrPayload);
+  const qr=state.sbpQrImage?`<img src="${state.sbpQrImage}" alt="QR-код для оплаты через СБП">`:sbpQrSvg(state.sbpQrPayload||state.sbpTransactionId||'creating');
+  const statusText=status==='creating'?'СОЗДАЁМ QR-КОД…':status==='processing'?'ПРОВЕРЯЕМ ПЛАТЁЖ…':(status==='failed'||status==='expired')?state.sbpPaymentMessage:'';
+  return `<div class="overlay sbp-payment-overlay"><div class="modal sbp-payment-modal" role="dialog" aria-modal="true" aria-labelledby="sbpPaymentTitle">
+    <div class="sbp-payment-brand"><img src="./brand/logo.svg" alt="СТРИЖЁМ — мужские стрижки"></div>
+    <h2 id="sbpPaymentTitle">ОПЛАТА ЧЕРЕЗ СБП</h2>
+    <div class="sbp-payment-instruction">ОТСКАНИРУЙТЕ QR-КОД<br>В ПРИЛОЖЕНИИ ВАШЕГО БАНКА</div>
+    <div class="sbp-qr-wrap ${ready?'ready':'loading'}">${ready?qr:'<span class="sbp-loader" aria-hidden="true"></span>'}</div>
+    <div class="sbp-payment-amount-label">К ОПЛАТЕ</div>
+    <div class="sbp-payment-amount">${amount} ₽</div>
+    <div class="sbp-payment-status ${status==='failed'||status==='expired'?'error':status==='processing'||status==='creating'?'processing':''}">${statusText}</div>
+    <button class="sbp-payment-cancel" type="button" data-action="cancel-sbp-payment">ОТМЕНА</button>
+  </div></div>`;
+}
+if(state.modal==='card-payment'){
+  const amount=fmt(state.cardPaymentAmount||payableTotal());
+  const isProcessing=state.cardPaymentStatus==='processing';
+  const isFailed=state.cardPaymentStatus==='failed';
+  return `<div class="overlay card-payment-overlay"><div class="modal card-payment-modal" role="dialog" aria-modal="true" aria-labelledby="cardPaymentTitle">
+    <div class="card-payment-brand"><img src="./brand/logo.svg" alt="СТРИЖЁМ — мужские стрижки"></div>
+    <h2 id="cardPaymentTitle">ОПЛАТА КАРТОЙ</h2>
+    <div class="card-payment-amount-label">К ОПЛАТЕ</div>
+    <div class="card-payment-amount">${amount} ₽</div>
+    <div class="card-terminal-art" aria-hidden="true"><img src="reference/card-terminal-reference.png" alt=""></div>
+    <div class="card-payment-instruction">ПРИЛОЖИТЕ КАРТУ<br>К БАНКОВСКОМУ ТЕРМИНАЛУ</div>
+    <div class="card-payment-cancel-note">ДЛЯ ОТМЕНЫ НАЖМИТЕ КНОПКУ ОТМЕНА<br>НА БАНКОВСКОМ ТЕРМИНАЛЕ</div>
+    <div class="card-payment-status ${isFailed?'error':isProcessing?'processing':''}">${isFailed?state.cardPaymentMessage:isProcessing?'ОБРАБОТКА ПЛАТЕЖА…':''}</div>
+<button type="button" class="card-payment-cancel-btn" data-action="cancel-card-payment">ОТМЕНА</button>
+  </div></div>`;
+}
 if(state.modal==='birthdate'){
   const parts=birthParts();
   const hasError=!!state.birthError;
@@ -351,11 +589,11 @@ return `<div class="overlay"><div class="modal ${state.modal==='policy'?'policy-
 function content(){return state.screen==='home'?home():state.screen==='cosmetics'?cosmeticsScreen():state.screen==='haircuts'?haircutScreen():state.screen==='promos'?promos():state.screen==='extras'?extrasScreen():state.screen==='phone'?phoneScreen():state.screen==='source'?sourceScreen():state.screen==='rating'?ratingScreen():state.screen==='payment'?paymentScreen():state.screen==='service'?serviceScreen():success()}
 function render(){const s=state.scale||1;if(state.screen==='service'){app.innerHTML=`<main class="stage"><div class="terminal-shell" style="width:${1024*s}px;height:${768*s}px"><section class="terminal screen-service" style="transform:scale(${s})">${serviceScreen()}</section></div></main>`;return;}app.innerHTML=`<main class="stage"><div class="terminal-shell" style="width:${1024*s}px;height:${768*s}px"><section class="terminal screen-${state.screen}" style="transform:scale(${s})"><header class="topbar"><button class="brand" data-action="brand"><img class="brand-logo" src="./brand/logo.svg" alt="СТРИЖЁМ — мужские стрижки"></button></header><div class="content">${content()}</div>${footer()}${modal()}</section></div></main>`;}
 app.addEventListener('dblclick',e=>{if(e.target.closest('[data-service-trigger]')){openServicePinModal();}});
-app.addEventListener('click',e=>{const t=e.target;const a=t.closest('[data-action]')?.dataset.action;if(a==='service-exit'){if(typeof window.STRIZHEM_SERVICE_EXIT==='function')window.STRIZHEM_SERVICE_EXIT();state.serviceAuthed=false;state.screen='payment';render();return}const svc=t.closest('[data-service-action]');if(svc){const action=svc.dataset.serviceAction;const label=svc.textContent.trim().replace(/\s+/g,' ');if(/REBOOT|CLOSE_SHIFT|CANCEL_RECEIPT/.test(action)){if(!window.confirm('Подтвердить действие: '+label+'?'))return;}runServiceAction(action,label);return}if(a==='haircuts'){state.flow='services';state.screen='haircuts';render();return}if(a==='extras-home'){state.flow='services';state.entry='extras';state.screen='extras';render();return}if(a==='promos'){state.flow='services';state.promotionSelection=null;state.screen='promos';render();return}if(a==='next-promotion'){if(!state.promotionSelection)return;state.base=state.promotionSelection==='senior'?{id:'senior',name:'Пенсионер',price:400}:{id:'father-son',name:'Отец и сын',price:1400};state.entry='promo';state.screen='extras';render();return}if(a==='cosmetics'){state.flow='cosmetics';state.screen='cosmetics';render();return}if(a==='next-cosmetics'){if(cosmeticsCount()===0)return;state.screen='phone';render();return}if(a==='cosmetics-scroll-up'){document.getElementById('cosmeticsCatalog')?.scrollBy({top:-260,behavior:'smooth'});return}if(a==='cosmetics-scroll-down'){document.getElementById('cosmeticsCatalog')?.scrollBy({top:260,behavior:'smooth'});return}if(a==='upper-back'){goBackFromExtras();return}if(a==='policy'){state.modal='policy';render();return}if(a==='close-modal'){state.modal=null;render();return}if(a==='cancel-service-pin'){closeServicePinModal();return}if(a==='service-pin-delete'){state.servicePin=state.servicePin.slice(0,-1);state.servicePinError='';render();return}if(a==='confirm-service-pin'){if(!state.servicePin||state.servicePinValidating)return;state.servicePinValidating=true;state.servicePinError='';render();verifyServiceModePin(state.servicePin).then(result=>{if(result&&result.ok){state.servicePinValidating=false;state.servicePinError='';state.servicePin='';state.modal=null;state.serviceAuthed=true;state.screen='service';state.serviceMessages=[];render();if(typeof window.STRIZHEM_OPEN_SERVICE_MODE==='function')window.STRIZHEM_OPEN_SERVICE_MODE(result);}else{state.servicePinValidating=false;state.servicePinError=(result&&result.message)||'Неверный PIN. Попробуйте ещё раз.';render();}});return}if(a==='open-email-modal'){openEmailModal();return}if(a==='cancel-email-modal'){closeEmailModal();return}if(a==='email-clear'){state.emailDraft='';state.emailError='';render();return}if(a==='email-backspace'){state.emailDraft=state.emailDraft.slice(0,-1);state.emailError='';render();return}if(a==='email-shift'){state.emailShift=!state.emailShift;render();return}if(a==='receipt-none'){state.receiptTo='none';render();return}if(a==='confirm-email'){if(state.emailSaving)return;const checked=emailLooksValid(state.emailDraft);if(!checked.ok){state.emailError=checked.message;render();return}state.emailSaving=true;state.emailError='';render();saveReceiptEmail(checked.value).then(result=>{if(result&&result.ok){state.receiptEmail=checked.value;state.receiptTo='email';state.emailDraft='';state.emailError='';state.emailSaving=false;state.emailShift=false;state.modal=null;render();}else{state.emailSaving=false;state.emailError=(result&&result.message)||'Не удалось сохранить e-mail. Попробуйте ещё раз.';render();}});return}if(a==='open-promo-modal'){openPromoModal();return}if(a==='close-promo-modal'||a==='cancel-promo-modal'){closePromoModal();return}if(a==='apply-promo'){if(!state.promoDraft||state.promoValidating)return;state.promoValidating=true;render();validatePromoCode(state.promoDraft).then(result=>{if(result.ok){state.promoCode=result.code;state.modal=null;state.promoDraft='';state.promoError='';state.promoValidating=false;render();}else{state.promoValidating=false;state.promoError=result.message||'Промокод не найден или недействителен';render();}});return}if(a==='promo-clear'){state.promoDraft='';state.promoError='';render();return}if(a==='promo-backspace'){state.promoDraft=state.promoDraft.slice(0,-1);state.promoError='';render();return}if(a==='toggle-consent'){state.consentAccepted=!state.consentAccepted;render();return}if(a==='backspace'){state.phone=state.phone.slice(0,-1);render();return}if(a==='toggle-bonus'){if(state.useBonuses&&state.bonusVerified){state.useBonuses=false;state.bonusVerified=false;render();return}openBirthModal();return}if(a==='open-birth-modal'){openBirthModal();return}if(a==='cancel-birth-modal'){closeBirthModal();return}if(a==='birth-clear'){state.birthDraft='';state.birthError='';render();return}if(a==='birth-backspace'){state.birthDraft=state.birthDraft.slice(0,-1);state.birthError='';render();return}if(a==='confirm-birth'){if(state.birthValidating)return;const err=validateBirthLocal(state.birthDraft);if(err){state.birthError=err;render();return}state.birthValidating=true;state.birthError='';render();verifyBirthDate(state.birthDraft).then(result=>{if(result.ok){state.birthValidating=false;state.birthError='';state.birthDraft='';state.modal=null;state.bonusVerified=true;state.useBonuses=true;render();}else{state.birthValidating=false;state.bonusVerified=false;state.useBonuses=false;state.birthError=result.message||'Дата рождения не совпадает с данными клиента.';render();}});return}if(a==='home-from-payment'){if(window.confirm('Вернуться на главный экран? Текущий заказ будет сброшен.'))goHome();return}if(a==='next-payment'){if(state.paymentMethod){state.screen='success';render()}return}if(a==='next-extras'){if(state.entry!=='extras'||serviceCount()>0){state.screen='phone';render()}return}if(a==='next-phone'){nextPhoneScreen();return}if(a==='next-rating'){if(state.master&&state.rating){state.screen='payment';render()}return}if(a==='finish'){goHome();return}if(a==='back'){if(state.screen==='haircuts'||state.screen==='promos'||state.screen==='cosmetics')state.screen='home';else if(state.screen==='extras')return goBackFromExtras();else if(state.screen==='phone')state.screen=state.flow==='cosmetics'?'cosmetics':'extras';else if(state.screen==='source')state.screen='phone';else if(state.screen==='rating')state.screen=state.selectedSource?'source':'phone';else state.screen='rating';render();return}
+app.addEventListener('click',e=>{const t=e.target;const a=t.closest('[data-action]')?.dataset.action;if(a==='service-exit'){if(typeof window.STRIZHEM_SERVICE_EXIT==='function')window.STRIZHEM_SERVICE_EXIT();state.serviceAuthed=false;state.screen='payment';render();return}const svc=t.closest('[data-service-action]');if(svc){const action=svc.dataset.serviceAction;const label=svc.textContent.trim().replace(/\s+/g,' ');if(/REBOOT|CLOSE_SHIFT|CANCEL_RECEIPT/.test(action)){if(!window.confirm('Подтвердить действие: '+label+'?'))return;}runServiceAction(action,label);return}if(a==='haircuts'){state.flow='services';state.screen='haircuts';render();return}if(a==='extras-home'){state.flow='services';state.entry='extras';state.screen='extras';render();return}if(a==='promos'){state.flow='services';state.promotionSelection=null;state.promotionNavigating=false;state.screen='promos';render();return}if(a==='next-promotion'){return}if(a==='cosmetics'){state.flow='cosmetics';state.screen='cosmetics';render();return}if(a==='next-cosmetics'){if(cosmeticsCount()===0)return;state.screen='phone';render();return}if(a==='cosmetics-scroll-up'){document.getElementById('cosmeticsCatalog')?.scrollBy({top:-260,behavior:'smooth'});return}if(a==='cosmetics-scroll-down'){document.getElementById('cosmeticsCatalog')?.scrollBy({top:260,behavior:'smooth'});return}if(a==='upper-back'){goBackFromExtras();return}if(a==='policy'){state.modal='policy';render();return}if(a==='close-modal'){state.modal=null;render();return}if(a==='cancel-service-pin'){closeServicePinModal();return}if(a==='service-pin-delete'){state.servicePin=state.servicePin.slice(0,-1);state.servicePinError='';render();return}if(a==='confirm-service-pin'){if(!state.servicePin||state.servicePinValidating)return;state.servicePinValidating=true;state.servicePinError='';render();verifyServiceModePin(state.servicePin).then(result=>{if(result&&result.ok){state.servicePinValidating=false;state.servicePinError='';state.servicePin='';state.modal=null;state.serviceAuthed=true;state.screen='service';state.serviceMessages=[];render();if(typeof window.STRIZHEM_OPEN_SERVICE_MODE==='function')window.STRIZHEM_OPEN_SERVICE_MODE(result);}else{state.servicePinValidating=false;state.servicePinError=(result&&result.message)||'Неверный PIN. Попробуйте ещё раз.';render();}});return}if(a==='cancel-card-payment'){cancelCardPayment();return}if(a==='open-email-modal'){openEmailModal();return}if(a==='cancel-email-modal'){closeEmailModal();return}if(a==='email-clear'){state.emailDraft='';state.emailError='';render();return}if(a==='email-backspace'){state.emailDraft=state.emailDraft.slice(0,-1);state.emailError='';render();return}if(a==='email-shift'){state.emailShift=!state.emailShift;render();return}if(a==='receipt-print'){state.receiptTo='print';render();return}if(a==='receipt-none'){state.receiptTo='none';render();return}if(a==='confirm-email'){if(state.emailSaving)return;const checked=emailLooksValid(state.emailDraft);if(!checked.ok){state.emailError=checked.message;render();return}state.emailSaving=true;state.emailError='';render();saveReceiptEmail(checked.value).then(result=>{if(result&&result.ok){state.receiptEmail=checked.value;state.receiptTo='email';state.emailDraft='';state.emailError='';state.emailSaving=false;state.emailShift=false;state.modal=null;render();}else{state.emailSaving=false;state.emailError=(result&&result.message)||'Не удалось сохранить e-mail. Попробуйте ещё раз.';render();}});return}if(a==='open-promo-modal'){openPromoModal();return}if(a==='close-promo-modal'||a==='cancel-promo-modal'){closePromoModal();return}if(a==='apply-promo'){if(!state.promoDraft||state.promoValidating)return;state.promoValidating=true;render();validatePromoCode(state.promoDraft).then(result=>{if(result.ok){state.promoCode=result.code;state.modal=null;state.promoDraft='';state.promoError='';state.promoValidating=false;render();}else{state.promoValidating=false;state.promoError=result.message||'Промокод не найден или недействителен';render();}});return}if(a==='promo-clear'){state.promoDraft='';state.promoError='';render();return}if(a==='promo-backspace'){state.promoDraft=state.promoDraft.slice(0,-1);state.promoError='';render();return}if(a==='toggle-consent'){state.consentAccepted=!state.consentAccepted;render();return}if(a==='backspace'){state.phone=state.phone.slice(0,-1);render();return}if(a==='toggle-bonus'){if(state.useBonuses&&state.bonusVerified){state.useBonuses=false;state.bonusVerified=false;render();return}openBirthModal();return}if(a==='open-birth-modal'){openBirthModal();return}if(a==='cancel-birth-modal'){closeBirthModal();return}if(a==='birth-clear'){state.birthDraft='';state.birthError='';render();return}if(a==='birth-backspace'){state.birthDraft=state.birthDraft.slice(0,-1);state.birthError='';render();return}if(a==='confirm-birth'){if(state.birthValidating)return;const err=validateBirthLocal(state.birthDraft);if(err){state.birthError=err;render();return}state.birthValidating=true;state.birthError='';render();verifyBirthDate(state.birthDraft).then(result=>{if(result.ok){state.birthValidating=false;state.birthError='';state.birthDraft='';state.modal=null;state.bonusVerified=true;state.useBonuses=true;render();}else{state.birthValidating=false;state.bonusVerified=false;state.useBonuses=false;state.birthError=result.message||'Дата рождения не совпадает с данными клиента.';render();}});return}if(a==='home-from-payment'){if(window.confirm('Вернуться на главный экран? Текущий заказ будет сброшен.'))goHome();return}if(a==='cancel-sbp-payment'){cancelSbpPayment();return}if(a==='cancel-cash-payment'){cancelCashPayment();return}if(a==='confirm-cash-payment'){confirmCashPayment();return}if(a==='next-payment'){if(state.paymentMethod==='card'){openCardPaymentModal();return}if(state.paymentMethod==='sbp'){openSbpPaymentModal();return}if(state.paymentMethod==='cash'){openCashPaymentModal();return}if(state.paymentMethod){state.screen='success';render()}return}if(a==='next-extras'){if(state.entry!=='extras'||serviceCount()>0){state.screen='phone';render()}return}if(a==='next-phone'){nextPhoneScreen();return}if(a==='next-rating'){if(state.master&&state.rating){state.screen='payment';render()}return}if(a==='finish'){goHome();return}if(a==='back'){if(state.screen==='haircuts'||state.screen==='promos'||state.screen==='cosmetics')state.screen='home';else if(state.screen==='extras')return goBackFromExtras();else if(state.screen==='phone')state.screen=state.flow==='cosmetics'?'cosmetics':'extras';else if(state.screen==='source')state.screen='phone';else if(state.screen==='rating')state.screen=state.selectedSource?'source':'phone';else state.screen='rating';render();return}
 const hc=t.closest('[data-haircut]');if(hc){state.base=haircuts.find(x=>x.id===hc.dataset.haircut);state.entry='haircut';render();setTimeout(()=>{state.screen='extras';render()},200);return}
-const pr=t.closest('[data-promotion]');if(pr){state.promotionSelection=pr.dataset.promotion;render();return}
+const pr=t.closest('[data-promotion]');if(pr){if(state.promotionNavigating)return;const id=pr.dataset.promotion;if(id!=='senior'&&id!=='father-son')return;state.promotionNavigating=true;state.promotionSelection=id;state.base=id==='senior'?{id:'senior',name:'Пенсионер',price:400}:{id:'father-son',name:'Отец и сын',price:1400};state.entry='promo';render();setTimeout(()=>{if(state.screen==='promos'){state.screen='extras';state.promotionNavigating=false;render();}},180);return}
 const plus=t.closest('[data-plus]');if(plus){changeExtra(plus.dataset.plus,1);return}const minus=t.closest('[data-minus]');if(minus){changeExtra(minus.dataset.minus,-1);return}const card=t.closest('[data-extra-card]');if(card){const id=card.dataset.extraCard;if((state.selectedExtras[id]||0)===0)changeExtra(id,1);return}
-const cc=t.closest('[data-cosmetics-category]');if(cc){state.cosmeticsCategory=cc.dataset.cosmeticsCategory;render();return}const cm=t.closest('[data-cosmetics-manufacturer]');if(cm){state.cosmeticsManufacturer=cm.dataset.cosmeticsManufacturer;render();return}const cp=t.closest('[data-cosmetics-plus]');if(cp){const id=cp.dataset.cosmeticsPlus;state.cosmeticsCart[id]=(state.cosmeticsCart[id]||0)+1;render();return}const cmin=t.closest('[data-cosmetics-minus]');if(cmin){const id=cmin.dataset.cosmeticsMinus;state.cosmeticsCart[id]=Math.max(0,(state.cosmeticsCart[id]||0)-1);render();return}const digit=t.closest('[data-digit]');if(digit){if(state.phone.length<10)state.phone+=digit.dataset.digit;render();return}const emailKey=t.closest('[data-email-key]');if(emailKey){let ch=emailKey.dataset.emailKey||'';if(ch.length===1&&/[a-z]/i.test(ch)&&state.emailShift)ch=ch.toUpperCase();state.emailDraft+=ch;state.emailError='';render();return}const emailDomain=t.closest('[data-email-domain]');if(emailDomain){applyEmailDomain(emailDomain.dataset.emailDomain||'');return}const promoDigit=t.closest('[data-promo-key]');if(promoDigit){if(state.promoDraft.length<12)state.promoDraft+=promoDigit.dataset.promoKey;state.promoError='';render();return}const birthDigit=t.closest('[data-birth-key]');if(birthDigit){if(state.birthDraft.length<8)state.birthDraft+=birthDigit.dataset.birthKey;state.birthError='';render();return}const serviceDigit=t.closest('[data-service-pin-key]');if(serviceDigit){state.servicePin+=serviceDigit.dataset.servicePinKey;state.servicePinError='';render();return}const src=t.closest('[data-source]');if(src){state.selectedSource=src.dataset.source;render();setTimeout(()=>{state.screen='rating';render();},180);return}const m=t.closest('[data-master]');if(m){if(m.dataset.enabled!=='true')return;const selected=masters.find(x=>x.display===Number(m.dataset.master));state.master=selected?.display||null;state.masterBackendId=selected?.id||null;render();return}const r=t.closest('[data-rating]');if(r){state.rating=Number(r.dataset.rating);render();return}const pay=t.closest('[data-pay]');if(pay){state.paymentMethod=pay.dataset.pay;render();return}});
+const cc=t.closest('[data-cosmetics-category]');if(cc){state.cosmeticsCategory=cc.dataset.cosmeticsCategory;render();return}const cm=t.closest('[data-cosmetics-manufacturer]');if(cm){state.cosmeticsManufacturer=cm.dataset.cosmeticsManufacturer;render();return}const cp=t.closest('[data-cosmetics-plus]');if(cp){const id=cp.dataset.cosmeticsPlus;state.cosmeticsCart[id]=(state.cosmeticsCart[id]||0)+1;render();return}const cmin=t.closest('[data-cosmetics-minus]');if(cmin){const id=cmin.dataset.cosmeticsMinus;state.cosmeticsCart[id]=Math.max(0,(state.cosmeticsCart[id]||0)-1);render();return}const digit=t.closest('[data-digit]');if(digit){if(state.phone.length<10)state.phone+=digit.dataset.digit;render();return}const emailKey=t.closest('[data-email-key]');if(emailKey){let ch=emailKey.dataset.emailKey||'';if(ch.length===1&&/[a-z]/i.test(ch)&&state.emailShift)ch=ch.toUpperCase();state.emailDraft+=ch;state.emailError='';render();return}const emailDomain=t.closest('[data-email-domain]');if(emailDomain){applyEmailDomain(emailDomain.dataset.emailDomain||'');return}const promoDigit=t.closest('[data-promo-key]');if(promoDigit){if(state.promoDraft.length<12)state.promoDraft+=promoDigit.dataset.promoKey;state.promoError='';render();return}const birthDigit=t.closest('[data-birth-key]');if(birthDigit){if(state.birthDraft.length<8)state.birthDraft+=birthDigit.dataset.birthKey;state.birthError='';render();return}const serviceDigit=t.closest('[data-service-pin-key]');if(serviceDigit){state.servicePin+=serviceDigit.dataset.servicePinKey;state.servicePinError='';render();return}const src=t.closest('[data-source]');if(src){state.selectedSource=src.dataset.source;render();setTimeout(()=>{state.screen='rating';render();},180);return}const m=t.closest('[data-master]');if(m){if(m.dataset.enabled!=='true')return;const selected=masters.find(x=>x.display===Number(m.dataset.master));state.master=selected?.display||null;state.masterBackendId=selected?.id||null;render();return}const r=t.closest('[data-rating]');if(r){state.rating=Number(r.dataset.rating);render();return}const pay=t.closest('[data-pay]');if(pay){const method=pay.dataset.pay;if(method==='card'){openCardPaymentModal();return}if(method==='sbp'){openSbpPaymentModal();return}if(method==='cash'){openCashPaymentModal();return}state.paymentMethod=method;render();return}});
 let __serviceTapAt=0;
 app.addEventListener('pointerup',e=>{const trigger=e.target.closest('[data-service-trigger]');if(!trigger)return;const now=Date.now();if(now-__serviceTapAt<360){__serviceTapAt=0;openServicePinModal();}else{__serviceTapAt=now;}});
 app.addEventListener('input',e=>{if(e.target.id==='promoCode')state.promoCode=e.target.value.toUpperCase();});
