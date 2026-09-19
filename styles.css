@@ -2008,7 +2008,19 @@ html,body,button,input{font-family:Inter, Arial, sans-serif!important}
   object-fit:contain!important;
 }
 
-/* V52 — smaller domain trigger in right free space with drop-up list */
+/* V47 — quick e-mail domains moved below keyboard */
+.email-row-letters{grid-template-columns:repeat(7,1fr) .9fr 2.7fr!important}
+.email-row-spacer{visibility:hidden!important;pointer-events:none!important}
+.email-domain-separator{display:flex;align-items:center;gap:14px;margin:8px 0 2px;color:#aaa;font-size:13px;font-weight:500}
+.email-domain-separator:before,.email-domain-separator:after{content:"";height:1px;background:#d7d7d7;flex:1}
+.email-domain-separator span{white-space:nowrap}
+.email-quick-domains{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;width:100%}
+.email-domain-btn{height:48px;border:1px solid #d9d9d9;border-radius:8px;background:#fff;color:#111;font-size:15px;font-weight:600;cursor:pointer}
+.email-domain-btn:active{transform:translateY(1px)}
+.email-modal{max-height:calc(100% - 24px)!important}
+
+
+/* V52 — compact domain trigger inside right free space */
 .email-row-letters{grid-template-columns:repeat(8,1fr) 2.1fr!important;align-items:start}
 .email-domain-inline{position:relative;align-self:stretch;min-width:0}
 .email-domain-inline[open]{z-index:20}
@@ -2021,3 +2033,699 @@ html,body,button,input{font-family:Inter, Arial, sans-serif!important}
 .email-domain-option:first-child{border-top:0}
 .email-domain-option:active{background:#f5f5f5}
 .email-modal{max-height:calc(100% - 24px)!important}
+
+
+/* V53 — Promotions correction per latest approved TZ */
+.screen-promos,.screen-promos .topbar,.screen-promos .content,.screen-promos .footer{font-family:"Inter",Arial,sans-serif!important}
+.screen-promos .content{padding:6px 32px 82px!important;overflow:hidden!important}
+.screen-promos .promotions-screen{height:100%!important;display:flex!important;flex-direction:column!important}
+.screen-promos .promotions-screen>h1{margin:8px 0 20px!important;text-align:center!important;font-size:34px!important;line-height:1.05!important;font-weight:700!important;letter-spacing:0!important}
+.screen-promos .promotions-grid{display:grid!important;grid-template-columns:1fr 1fr!important;grid-template-rows:232px 232px!important;gap:14px 16px!important;width:100%!important}
+.screen-promos .promotion-card{min-width:0!important;height:232px!important;grid-template-columns:43% 57%!important;border:1px solid #dededc!important;border-radius:10px!important;background:#fff!important;box-shadow:0 2px 8px rgba(0,0,0,.045)!important}
+.screen-promos .promotion-card.active-promo{cursor:pointer!important;touch-action:manipulation!important}
+.screen-promos .promotion-card.active-promo:active,.screen-promos .promotion-card.active-promo.navigating{transform:scale(.992)!important;border-color:#e30613!important}
+.screen-promos .promotion-card.active-promo.navigating{pointer-events:none!important}
+.screen-promos .promotion-art{padding:13px 10px 13px 14px!important;background:#fff!important}
+.screen-promos .promotion-art img{width:100%!important;height:100%!important;object-fit:contain!important;object-position:center!important;background:#fff!important}
+.screen-promos .promotion-content{padding:20px 18px 16px 10px!important;min-width:0!important}
+.screen-promos .promotion-badge{height:27px!important;padding:0 10px!important;gap:7px!important;border-radius:6px!important;font-size:11.5px!important;font-weight:600!important}
+.screen-promos .promotion-badge i{width:16px!important;height:16px!important;font-size:11px!important}
+.screen-promos .promotion-content h2{margin:13px 0 9px!important;font-size:20px!important;line-height:1.08!important;font-weight:700!important}
+.screen-promos .promotion-content p{margin:0!important;font-size:13.5px!important;line-height:1.38!important;font-weight:400!important}
+.screen-promos .promotion-price{height:44px!important;margin-top:auto!important;border-radius:5px!important;font-size:22px!important;font-weight:700!important}
+.screen-promos .promotion-price.disabled{font-size:14px!important;font-weight:600!important;background:#c9c9c8!important}
+.screen-promos .inactive-promo{cursor:default!important;pointer-events:none!important}
+.screen-promos .footer{height:82px!important;min-height:82px!important;padding:0 28px 18px!important;background:var(--terminal-bg)!important;border:0!important;display:grid!important;grid-template-columns:118px 1fr 118px!important;align-items:end!important;position:absolute!important;left:0!important;right:0!important;bottom:0!important}
+.screen-promos .footer .back{grid-column:1!important;width:118px!important;height:50px!important;justify-self:start!important}
+.screen-promos .steps{position:absolute!important;left:50%!important;bottom:16px!important;transform:translateX(-50%)!important;margin:0!important;width:auto!important;gap:21px!important}
+.screen-promos .promotions-next{display:none!important}
+
+/* V54 — payment receipt menu exactly per updated reference */
+.screen-payment .receipt-delivery-v54{
+  margin-top:8px!important;
+  padding:10px 12px 10px!important;
+  border:1px solid #ef6068!important;
+  border-radius:8px!important;
+  background:#fff!important;
+  box-shadow:none!important;
+}
+.screen-payment .receipt-delivery-v54 h3{
+  margin:0!important;
+  font-size:12px!important;
+  line-height:1.1!important;
+  font-weight:700!important;
+  color:#171717!important;
+  letter-spacing:0!important;
+}
+.screen-payment .receipt-delivery-v54>p{
+  margin:3px 0 7px!important;
+  font-size:9px!important;
+  line-height:1.2!important;
+  color:#747474!important;
+  font-weight:400!important;
+}
+.screen-payment .receipt-options-list{
+  display:grid!important;
+  gap:5px!important;
+}
+.screen-payment .receipt-option{
+  width:100%!important;
+  height:40px!important;
+  border:0!important;
+  border-radius:6px!important;
+  background:#f7f7f6!important;
+  padding:0 10px!important;
+  display:grid!important;
+  grid-template-columns:34px 1fr 24px!important;
+  gap:9px!important;
+  align-items:center!important;
+  text-align:left!important;
+  cursor:pointer!important;
+  color:#111!important;
+  font-family:"Inter",Arial,sans-serif!important;
+  box-shadow:none!important;
+}
+.screen-payment .receipt-option:active{
+  background:#f1f1f0!important;
+}
+.screen-payment .receipt-option.selected{
+  background:#f7f7f6!important;
+}
+.screen-payment .receipt-option-icon{
+  width:28px!important;
+  height:28px!important;
+  display:grid!important;
+  place-items:center!important;
+  color:#111!important;
+}
+.screen-payment .receipt-option-icon svg{
+  width:27px!important;
+  height:27px!important;
+  display:block!important;
+}
+.screen-payment .receipt-option-label{
+  font-size:11px!important;
+  line-height:1!important;
+  font-weight:600!important;
+  color:#191919!important;
+  white-space:nowrap!important;
+}
+.screen-payment .receipt-delivery-v54 .receipt-radio{
+  width:21px!important;
+  height:21px!important;
+  border:2px solid #c9c9c7!important;
+  background:#fff!important;
+  justify-self:end!important;
+  pointer-events:none!important;
+}
+.screen-payment .receipt-delivery-v54 .receipt-radio.selected{
+  border-color:#f0222d!important;
+}
+.screen-payment .receipt-delivery-v54 .receipt-radio.selected:after{
+  inset:4px!important;
+  background:#f0222d!important;
+}
+.screen-payment .receipt-profile-note{
+  margin-top:7px!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:6px!important;
+  color:#777!important;
+}
+.screen-payment .receipt-profile-note>span{
+  width:15px!important;
+  height:15px!important;
+  border:1px solid #aaa!important;
+  border-radius:50%!important;
+  display:grid!important;
+  place-items:center!important;
+  font-size:9px!important;
+  line-height:1!important;
+  font-weight:600!important;
+  color:#777!important;
+  flex:none!important;
+}
+.screen-payment .receipt-profile-note small{
+  font-size:8.5px!important;
+  line-height:1.15!important;
+  color:#777!important;
+  font-weight:400!important;
+}
+
+
+/* V55 — receipt block border + cash icon alignment */
+.screen-payment .receipt-delivery-v54{
+  border:1.5px solid #ef2b35!important;
+  border-radius:8px!important;
+  box-sizing:border-box!important;
+}
+.screen-payment .payment-method-card[data-pay="cash"] img{
+  width:32px!important;
+  height:27px!important;
+  object-fit:contain!important;
+  object-position:center!important;
+  justify-self:center!important;
+  align-self:center!important;
+  transform:translateY(1px)!important;
+}
+\n\n/* V56 — cash icon rebuilt as centered inline SVG */\n.screen-payment .payment-method-card[data-pay="cash"] .cash-icon-v56{\n  width:32px!important;\n  height:32px!important;\n  display:grid!important;\n  place-items:center!important;\n  justify-self:center!important;\n  align-self:center!important;\n  color:#111!important;\n  transform:none!important;\n}\n.screen-payment .payment-method-card[data-pay="cash"] .cash-icon-v56 svg{\n  width:32px!important;\n  height:24px!important;\n  display:block!important;\n  overflow:visible!important;\n}\n.screen-payment .payment-method-card[data-pay="cash"] img{display:none!important;}\n
+/* V57 — Card payment modal */
+.card-payment-overlay{
+  background:rgba(0,0,0,.62)!important;
+  z-index:40!important;
+  padding:16px!important;
+}
+.card-payment-modal{
+  width:720px!important;
+  height:716px!important;
+  max-height:none!important;
+  padding:26px 54px 22px!important;
+  border-radius:18px!important;
+  border:1px solid #dedede!important;
+  background:#fff!important;
+  box-shadow:0 18px 54px rgba(0,0,0,.18)!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  text-align:center!important;
+  font-family:"Inter",Arial,sans-serif!important;
+  color:#111!important;
+  overflow:hidden!important;
+}
+.card-payment-brand{
+  width:390px!important;
+  height:98px!important;
+  display:grid!important;
+  place-items:center!important;
+  margin:0 auto 8px!important;
+}
+.card-payment-brand img{
+  width:100%!important;
+  height:100%!important;
+  object-fit:contain!important;
+  display:block!important;
+}
+.card-payment-modal h2{
+  margin:0 0 24px!important;
+  font-family:"Inter",Arial,sans-serif!important;
+  font-size:43px!important;
+  line-height:1!important;
+  font-weight:700!important;
+  letter-spacing:.2px!important;
+}
+.card-payment-amount-label{
+  margin:0 0 2px!important;
+  font-size:22px!important;
+  line-height:1.1!important;
+  font-weight:500!important;
+  color:#333!important;
+}
+.card-payment-amount{
+  margin:0!important;
+  font-size:86px!important;
+  line-height:1!important;
+  font-weight:700!important;
+  color:#e30613!important;
+  letter-spacing:-2px!important;
+  font-variant-numeric:tabular-nums!important;
+}
+.card-terminal-art{
+  width:330px!important;
+  height:205px!important;
+  display:grid!important;
+  place-items:center!important;
+  margin:6px 0 2px!important;
+  flex:0 0 auto!important;
+}
+.card-terminal-art svg{
+  width:100%!important;
+  height:100%!important;
+  display:block!important;
+  overflow:visible!important;
+}
+.card-payment-instruction{
+  margin:4px 0 0!important;
+  font-size:31px!important;
+  line-height:1.18!important;
+  font-weight:700!important;
+  letter-spacing:.1px!important;
+}
+.card-payment-cancel-note{
+  margin-top:auto!important;
+  padding-top:20px!important;
+  font-size:17px!important;
+  line-height:1.28!important;
+  font-weight:500!important;
+  color:#666!important;
+}
+.card-payment-status{
+  min-height:20px!important;
+  margin-top:8px!important;
+  font-size:14px!important;
+  line-height:1.25!important;
+  font-weight:600!important;
+  color:#666!important;
+}
+.card-payment-status.error{color:#e30613!important}
+.card-payment-status.processing{color:#555!important}
+@media(max-width:900px){
+  .card-payment-modal{width:700px!important;height:700px!important}
+}
+
+
+/* V58 — SBP payment modal */
+.sbp-payment-overlay{
+  background:rgba(0,0,0,.62)!important;
+  z-index:41!important;
+  padding:16px!important;
+}
+.sbp-payment-modal{
+  width:720px!important;
+  height:716px!important;
+  max-height:none!important;
+  padding:24px 54px 24px!important;
+  border-radius:18px!important;
+  border:1px solid #dedede!important;
+  background:#fff!important;
+  box-shadow:0 18px 54px rgba(0,0,0,.18)!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  text-align:center!important;
+  font-family:"Inter",Arial,sans-serif!important;
+  color:#111!important;
+  overflow:hidden!important;
+}
+.sbp-payment-brand{
+  width:390px!important;
+  height:96px!important;
+  display:grid!important;
+  place-items:center!important;
+  margin:0 auto 5px!important;
+}
+.sbp-payment-brand img{width:100%!important;height:100%!important;object-fit:contain!important;display:block!important}
+.sbp-payment-modal h2{
+  margin:0 0 22px!important;
+  font-family:"Inter",Arial,sans-serif!important;
+  font-size:42px!important;
+  line-height:1!important;
+  font-weight:700!important;
+  letter-spacing:.2px!important;
+}
+.sbp-payment-instruction{
+  margin:0 0 10px!important;
+  font-size:22px!important;
+  line-height:1.24!important;
+  font-weight:500!important;
+  color:#222!important;
+}
+.sbp-qr-wrap{
+  width:255px!important;
+  height:255px!important;
+  display:grid!important;
+  place-items:center!important;
+  margin:0 auto 8px!important;
+  flex:0 0 auto!important;
+  background:#fff!important;
+}
+.sbp-qr-wrap svg,.sbp-qr-wrap img{width:100%!important;height:100%!important;object-fit:contain!important;display:block!important}
+.sbp-loader{
+  width:54px!important;height:54px!important;border:5px solid #ececec!important;border-top-color:#e30613!important;border-radius:50%!important;animation:sbpSpin .8s linear infinite!important
+}
+@keyframes sbpSpin{to{transform:rotate(360deg)}}
+.sbp-payment-amount-label{
+  margin:0 0 2px!important;
+  font-size:22px!important;
+  line-height:1.1!important;
+  font-weight:500!important;
+  color:#333!important;
+}
+.sbp-payment-amount{
+  margin:0!important;
+  font-size:78px!important;
+  line-height:.98!important;
+  font-weight:700!important;
+  color:#e30613!important;
+  letter-spacing:-2px!important;
+  font-variant-numeric:tabular-nums!important;
+}
+.sbp-payment-status{
+  min-height:20px!important;
+  margin:4px 0 8px!important;
+  font-size:13px!important;
+  line-height:1.2!important;
+  font-weight:600!important;
+  color:#666!important;
+}
+.sbp-payment-status.error{color:#e30613!important}
+.sbp-payment-status.processing{color:#555!important}
+.sbp-payment-cancel{
+  width:430px!important;
+  height:64px!important;
+  margin-top:auto!important;
+  border:0!important;
+  border-radius:6px!important;
+  background:#e30613!important;
+  color:#fff!important;
+  font-family:"Inter",Arial,sans-serif!important;
+  font-size:27px!important;
+  line-height:1!important;
+  font-weight:700!important;
+  cursor:pointer!important;
+  touch-action:manipulation!important;
+}
+.sbp-payment-cancel:active{transform:scale(.995)!important;background:#c90511!important}
+@media(max-width:900px){.sbp-payment-modal{width:700px!important;height:700px!important}}
+
+
+/* V59 — Cash payment modal */
+.cash-payment-overlay{
+  background:rgba(0,0,0,.58)!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  padding:16px!important;z-index:1400!important;
+}
+.cash-payment-modal{
+  width:690px!important;height:720px!important;max-width:calc(100% - 32px)!important;max-height:calc(100% - 32px)!important;
+  padding:28px 70px 30px!important;box-sizing:border-box!important;
+  border-radius:18px!important;border:1px solid #dedede!important;background:#fff!important;
+  box-shadow:0 18px 55px rgba(0,0,0,.18)!important;
+  display:flex!important;flex-direction:column!important;align-items:center!important;
+  font-family:"Inter",Arial,sans-serif!important;color:#111!important;overflow:hidden!important;
+}
+.cash-payment-brand{width:370px!important;height:92px!important;margin-bottom:18px!important;flex:0 0 auto!important}
+.cash-payment-brand img{width:100%!important;height:100%!important;display:block!important;object-fit:contain!important}
+.cash-payment-modal h2{margin:0 0 32px!important;font-size:43px!important;line-height:1!important;font-weight:700!important;text-align:center!important;letter-spacing:-.8px!important}
+.cash-payment-label{font-size:22px!important;line-height:1!important;font-weight:500!important;color:#333!important;text-align:center!important;letter-spacing:.2px!important}
+.cash-payment-due{margin-top:13px!important;font-size:70px!important;line-height:.98!important;font-weight:700!important;color:#e30613!important;text-align:center!important;letter-spacing:-2px!important}
+.cash-payment-divider{width:100%!important;height:1px!important;background:#dedede!important;margin:26px 0 20px!important;flex:0 0 auto!important}
+.cash-payment-divider.second{margin:22px 0 18px!important}
+.cash-received-box{width:100%!important;height:68px!important;margin-top:13px!important;border:2px solid #bbb!important;border-radius:10px!important;display:grid!important;grid-template-columns:1fr 50px!important;align-items:center!important;padding:0 14px 0 22px!important;box-sizing:border-box!important;background:#fff!important}
+.cash-received-box strong{font-size:34px!important;line-height:1!important;font-weight:700!important;letter-spacing:-.5px!important}
+.cash-received-clear{width:38px!important;height:38px!important;border-radius:50%!important;background:#bfc0c2!important;color:#fff!important;font-size:38px!important;line-height:34px!important;text-align:center!important;font-weight:400!important;justify-self:end!important}
+.cash-payment-change{margin-top:14px!important;font-size:54px!important;line-height:1!important;font-weight:700!important;color:#111!important;text-align:center!important;letter-spacing:-1.2px!important}
+.cash-payment-status{height:24px!important;margin-top:10px!important;font-size:13px!important;font-weight:600!important;text-align:center!important;color:#666!important}
+.cash-payment-status.error{color:#e30613!important}.cash-payment-status.processing{color:#555!important}
+.cash-payment-actions{width:100%!important;display:grid!important;grid-template-columns:1fr 1fr!important;gap:18px!important;margin-top:auto!important}
+.cash-payment-actions button{height:64px!important;border-radius:6px!important;font-family:"Inter",Arial,sans-serif!important;font-size:24px!important;font-weight:700!important;cursor:pointer!important}
+.cash-payment-cancel{background:#fff!important;border:1.5px solid #cfcfcf!important;color:#111!important}
+.cash-payment-done{background:#e30613!important;border:1.5px solid #e30613!important;color:#fff!important}
+.cash-payment-done:disabled{background:#efb1b5!important;border-color:#efb1b5!important;color:#fff!important;cursor:default!important}
+.cash-payment-actions button:active:not(:disabled){transform:scale(.995)!important}
+@media(max-width:900px){.cash-payment-modal{width:680px!important;height:700px!important}.cash-payment-modal h2{font-size:39px!important}.cash-payment-due{font-size:64px!important}}
+
+
+/* V60 — explicit cancel button in card payment modal */
+.card-payment-cancel-btn{
+  width:58%;
+  min-width:300px;
+  max-width:520px;
+  height:58px;
+  margin:20px auto 0;
+  border:1.5px solid #e30613;
+  border-radius:7px;
+  background:#fff;
+  color:#e30613;
+  font-family:"Inter",Arial,sans-serif;
+  font-size:22px;
+  font-weight:700;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+}
+.card-payment-cancel-btn:active{
+  transform:translateY(1px);
+  background:#fff7f7;
+}
+
+
+/* V61 — keep card cancel button inside 1024×768 viewport */
+.card-payment-modal{
+  position:relative!important;
+  padding-bottom:82px!important;
+}
+.card-terminal-art{
+  height:190px!important;
+  margin:2px 0 0!important;
+}
+.card-payment-instruction{
+  margin-top:0!important;
+}
+.card-payment-cancel-note{
+  margin-top:8px!important;
+  padding-top:0!important;
+  font-size:16px!important;
+  line-height:1.22!important;
+}
+.card-payment-status{
+  min-height:16px!important;
+  margin-top:4px!important;
+}
+.card-payment-cancel-btn{
+  position:absolute!important;
+  left:50%!important;
+  bottom:18px!important;
+  transform:translateX(-50%)!important;
+  width:58%!important;
+  min-width:300px!important;
+  max-width:520px!important;
+  height:52px!important;
+  margin:0!important;
+  z-index:3!important;
+}
+.card-payment-cancel-btn:active{
+  transform:translateX(-50%) translateY(1px)!important;
+}
+
+
+/* V62 — restore breathing room between card illustration and instruction */
+.card-terminal-art{
+  width:310px!important;
+  height:174px!important;
+  margin:10px 0 14px!important;
+}
+.card-payment-instruction{
+  margin:0!important;
+  font-size:29px!important;
+  line-height:1.18!important;
+}
+.card-payment-cancel-note{
+  margin-top:14px!important;
+  padding-top:0!important;
+  font-size:15.5px!important;
+  line-height:1.24!important;
+}
+.card-payment-status{
+  min-height:12px!important;
+  margin-top:2px!important;
+}
+
+
+/* V63 — rebuilt card/POS illustration */
+.card-terminal-art{
+  width:330px!important;
+  height:176px!important;
+  margin:12px 0 16px!important;
+}
+.card-terminal-art svg{
+  width:100%!important;
+  height:100%!important;
+  display:block!important;
+}
+
+
+/* V64 — use approved reference artwork as a transparent native asset */
+.card-terminal-art{
+  width:345px!important;
+  height:190px!important;
+  margin:10px 0 14px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  background:transparent!important;
+}
+.card-terminal-art img{
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  object-fit:contain!important;
+  object-position:center!important;
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+  filter:none!important;
+}
+
+
+/* V65 — card payment modal alignment + cancel reopen fix */
+.card-payment-cancel-note{
+  margin-top:auto!important;
+  padding-top:18px!important;
+  margin-bottom:18px!important;
+  font-size:17px!important;
+  line-height:1.28!important;
+  font-weight:500!important;
+  color:#666!important;
+}
+.card-payment-cancel-btn{
+  width:430px!important;
+  height:64px!important;
+  margin-top:0!important;
+  margin-bottom:0!important;
+  border:0!important;
+  border-radius:6px!important;
+  background:#e30613!important;
+  color:#fff!important;
+  font-family:"Inter",Arial,sans-serif!important;
+  font-size:27px!important;
+  line-height:1!important;
+  font-weight:700!important;
+  cursor:pointer!important;
+  touch-action:manipulation!important;
+  flex:0 0 auto!important;
+}
+.card-payment-cancel-btn:active{transform:scale(.995)!important;background:#c90511!important}
+.card-payment-status{
+  min-height:20px!important;
+  margin-top:6px!important;
+  margin-bottom:10px!important;
+  font-size:14px!important;
+  line-height:1.25!important;
+  font-weight:600!important;
+  color:#666!important;
+}
+@media(max-width:900px){
+  .card-payment-cancel-btn{width:430px!important;height:64px!important}
+}
+
+
+/* V66 — unify card cancel button with SBP and fix active jump */
+.card-payment-modal{
+  padding-bottom:26px!important;
+}
+.card-payment-cancel-note{
+  margin-top:auto!important;
+  padding-top:16px!important;
+  margin-bottom:8px!important;
+  font-size:16px!important;
+  line-height:1.24!important;
+  font-weight:500!important;
+  color:#666!important;
+}
+.card-payment-status{
+  min-height:0!important;
+  margin-top:0!important;
+  margin-bottom:12px!important;
+  font-size:14px!important;
+  line-height:1.25!important;
+  font-weight:600!important;
+  color:#666!important;
+}
+.card-payment-cancel-btn{
+  position:static!important;
+  left:auto!important;
+  right:auto!important;
+  bottom:auto!important;
+  transform:none!important;
+  width:430px!important;
+  height:64px!important;
+  margin:0 auto!important;
+  border:0!important;
+  border-radius:6px!important;
+  background:#e30613!important;
+  color:#fff!important;
+  font-family:"Inter",Arial,sans-serif!important;
+  font-size:27px!important;
+  line-height:1!important;
+  font-weight:700!important;
+  cursor:pointer!important;
+  touch-action:manipulation!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  flex:0 0 auto!important;
+  box-shadow:none!important;
+}
+.card-payment-cancel-btn:hover{
+  background:#d90512!important;
+}
+.card-payment-cancel-btn:active,
+.card-payment-cancel-btn:focus,
+.card-payment-cancel-btn:focus-visible{
+  transform:none!important;
+  outline:none!important;
+}
+@media(max-width:900px){
+  .card-payment-cancel-btn{width:430px!important;height:64px!important}
+}
+
+
+/* V67 — card payment modal compact sizing so cancel button fully fits */
+.card-payment-modal{
+  width:700px!important;
+  height:700px!important;
+  padding:22px 50px 20px!important;
+}
+.card-payment-brand{
+  width:372px!important;
+  height:92px!important;
+  margin:0 auto 4px!important;
+}
+.card-payment-modal h2{
+  margin:0 0 18px!important;
+  font-size:42px!important;
+  letter-spacing:0!important;
+}
+.card-payment-amount-label{
+  margin:0 0 2px!important;
+  font-size:20px!important;
+}
+.card-payment-amount{
+  font-size:80px!important;
+  line-height:0.98!important;
+}
+.card-terminal-art{
+  width:250px!important;
+  height:165px!important;
+  margin:10px 0 8px!important;
+}
+.card-payment-instruction{
+  margin:0!important;
+  font-size:28px!important;
+  line-height:1.12!important;
+}
+.card-payment-cancel-note{
+  margin-top:10px!important;
+  padding-top:0!important;
+  margin-bottom:12px!important;
+  font-size:14px!important;
+  line-height:1.2!important;
+  font-weight:500!important;
+  color:#666!important;
+  max-width:470px!important;
+}
+.card-payment-status{
+  min-height:0!important;
+  margin:0 0 8px!important;
+  font-size:13px!important;
+  line-height:1.2!important;
+}
+.card-payment-cancel-btn{
+  width:390px!important;
+  height:58px!important;
+  margin-top:auto!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+  margin-bottom:0!important;
+  border-radius:6px!important;
+  font-size:24px!important;
+  line-height:1!important;
+  font-weight:700!important;
+}
+.card-payment-cancel-btn:hover{background:#d90512!important}
+.card-payment-cancel-btn:active,
+.card-payment-cancel-btn:focus,
+.card-payment-cancel-btn:focus-visible{
+  transform:none!important;
+  outline:none!important;
+}
